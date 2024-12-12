@@ -20,6 +20,10 @@ func main() {
 		log.Fatalf("failed to load config %v\n", err)
 	}
 
+	if err := resolvePassword(&config); err != nil {
+		log.Fatalf("failed to resolve password %v\n", err)
+	}
+
 	c, err := serverquery.NewClient(config.Remote, config.User, config.Password, config.IgnoreFloodLimits)
 	if err != nil {
 		log.Fatalf("failed to init client %v\n", err)
