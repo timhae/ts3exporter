@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -20,6 +21,20 @@ func main() {
 	setConfig(&config)
 
 	flag.Parse()
+
+	fInfo, err := os.Stat(config.PasswordFile)
+	if err != nil {
+		log.Fatalf("failed to get fileinfo of password file: %v\n", err)
+	}
+	if !(fInfo.Mode() == 0600 || fInfo.Mode() == 0400) {
+		log.Fatalf("password file permissions are to open. Have: %s, want at most: %o\n", fInfo.Mode().String(), 0600)
+	}
+	data, err := os.ReadFile(config.PasswordFile)
+	if err != nil {
+		log.Fatalf("failed to read password file: %v\n", err)
+	}
+	config.Password = strings.Trim(string(data), "\r\n")
+
 	c, err := serverquery.NewClient(config.Remote, config.User, config.Password, config.IgnoreFloodLimits)
 	if err != nil {
 		log.Fatalf("failed to init client %v\n", err)
@@ -43,29 +58,31 @@ func setConfig(config *Config) {
 	if remote, found := os.LookupEnv("REMOTE"); found {
 		config.Remote = remote
 	} else {
-		remoteFlag := flag.String("remote", "localhost:10011", "remote address of server query port")
-		config.Remote = *remoteFlag
+		flag.StringVar(&config.Remote, "remote", "localhost:10011", "remote address of server query port")
 	}
 
 	if user, found := os.LookupEnv("SERVERQUERY_USER"); found {
 		config.User = user
 	} else {
-		userFlag := flag.String("user", "serveradmin", "the serverquery user of the ts3exporter")
-		config.User = *userFlag
+		flag.StringVar(&config.User, "user", "serveradmin", "the serverquery user of the ts3exporter")
+	}
+
+	if pwf, found := os.LookupEnv("SERVERQUERY_PASSWORD_FILE"); found {
+		config.PasswordFile = pwf
+	} else {
+		flag.StringVar(&config.PasswordFile, "passwordfile", "", "The password file for the serverquery user")
 	}
 
 	if pw, found := os.LookupEnv("SERVERQUERY_PASSWORD"); found {
 		config.Password = pw
 	} else {
-		passwordFlag := flag.String("password", "", "The password for the serverquery user")
-		config.Password = *passwordFlag
+		flag.StringVar(&config.Password, "password", "", "The password for the serverquery user")
 	}
 
 	if listen, found := os.LookupEnv("LISTEN_ADDRESS"); found {
 		config.ListenAddr = listen
 	} else {
-		listenFlag := flag.String("listen", "0.0.0.0:9189", "listen address of the exporter")
-		config.ListenAddr = *listenFlag
+		flag.StringVar(&config.ListenAddr, "listen", "0.0.0.0:9189", "listen address of the exporter")
 	}
 
 	if enableChannelMetrics, found := os.LookupEnv("ENABLE_CHANNEL_METRICS"); found {
@@ -76,8 +93,7 @@ func setConfig(config *Config) {
 			config.EnableChannelMetrics = v
 		}
 	} else {
-		enableChannelMetricsFlag := flag.Bool("enablechannelmetrics", false, "Enables the channel collector.")
-		config.EnableChannelMetrics = *enableChannelMetricsFlag
+		flag.BoolVar(&config.EnableChannelMetrics, "enablechannelmetrics", false, "Enables the channel collector.")
 	}
 
 	if ignoreFloodLimits, found := os.LookupEnv("IGNORE_FLOOD_LIMITS"); found {
@@ -88,7 +104,6 @@ func setConfig(config *Config) {
 			config.IgnoreFloodLimits = v
 		}
 	} else {
-		ignoreFloodLimitsFlag := flag.Bool("ignorefloodlimits", false, "Disable the server query flood limiter. Use this only if your exporter is whitelisted in the query_ip_whitelist.txt file.")
-		config.IgnoreFloodLimits = *ignoreFloodLimitsFlag
+		flag.BoolVar(&config.IgnoreFloodLimits, "ignorefloodlimits", false, "Disable the server query flood limiter. Use this only if your exporter is whitelisted in the query_ip_whitelist.txt file.")
 	}
 }
