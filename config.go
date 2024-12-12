@@ -5,6 +5,7 @@ type Config struct {
 	ListenAddr           string
 	User                 string
 	Password             string
+	PasswordFile         string
 	EnableChannelMetrics bool
 	IgnoreFloodLimits    bool
 }
@@ -15,6 +16,7 @@ func NewConfig() Config {
 	config.ListenAddr = "0.0.0.0:9189"
 	config.User = "serveradmin"
 	config.Password = ""
+	config.PasswordFile = ""
 	config.EnableChannelMetrics = false
 	config.IgnoreFloodLimits = false
 
